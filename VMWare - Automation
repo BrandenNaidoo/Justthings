@@ -1,0 +1,89 @@
+##############################
+#Adapted from https://gist.github.com/vmwarecode and updated for specific use cases
+##############################
+
+# Load PowerCLI Modules
+if ( !(Get-Module -Name VMware.VimAutomation.Core -ErrorAction SilentlyContinue) ) {
+. "C:\Program Files (x86)\VMware\Infrastructure\vSphere PowerCLI\Scripts\Initialize-PowerCLIEnvironment.ps1"
+}
+
+# Remove the below comment if you just want to you a single vCenter
+# $vCenter = "zavcenter01" 
+# Select which vCenter you want to connect to
+Write-host "Select which vCenter to connect to:"
+Write-Host ""
+Write-Host "1. zavcenter01"
+Write-Host "2. zavcenter02"
+Write-Host "3. zavcenter03"
+
+ 
+$IvCenter = read-host "Select a vCenter Server. Enter Number "
+ 
+if ($Ivcenter –eq 1) {
+$vCenter = "zavcenter01"
+} elseif ($Ivcenter -eq 2) {
+$vCenter = "zavcenter02"
+
+} else {
+$vCenter = "zavcenter03"
+}
+ 
+write-host ""
+Write-Host "You selected: "$vCenter
+write-host ""
+start-sleep -s 5
+ 
+# connect to selected vCenter
+connect-viserver $vCenter
+
+# List Clusters
+write-host ""
+Write-host "Choose which Cluster the host you want to patch belongs to:"
+write-host "(it may take a few seconds to build the list)"
+write-host ""
+$ICLUSTER = get-cluster | Select Name | Sort-object Name
+$i = 1
+$ICLUSTER | %{Write-Host $i":" $_.Name; $i++}
+$HCLUSTER = Read-host "Enter the number for the host to Patch."
+$SCLUSTER = $ICLUSTER[$HCLUSTER -1].Name
+write-host "you have selected" $SCLUSTER"."
+start-sleep -s 5
+ 
+# List hosts to select
+write-host ""
+Write-host "Choose which vSphere host in $($SCLUSTER) to Deploy Patches to:"
+write-host "(it may take a few seconds to build the list)"
+write-host ""
+$IHOST = Get-Cluster $SCLUSTER | Get-VMhost | Select Name | Sort-object Name
+$i = 1
+$IHOST | %{Write-Host $i":" $_.Name; $i++}
+$DSHost = Read-host "Enter the number for the host to Patch."
+$SHOST = $IHOST[$DSHost -1].Name
+write-host "you have selected $($SHOST)."
+ 
+# Scan selected host
+test-compliance -entity $SHOST
+ 
+# Display compliance results and wait 30 seconds
+get-compliance -entity $SHOST
+start-sleep -s 30
+ 
+# Place selected host into Maintenance mode
+write-host "Placing $($SHOST) in Maintenance Mode"
+Get-VMHost -Name $SHOST | set-vmhost -State Maintenance
+ 
+# Remediate selected host for Host Patches
+write-host "Deploying VMware Host Critical &amp; Non Critical Patches"
+get-baseline -name *critical* | update-entity -entity $SHOST -confirm:$false
+ 
+# Remediate selected host for ESXi_v7_U3
+write-host "Deploying ESXi7.0"
+get-baseline -name "ESXi7_Update_3" | update-entity -entity $SHOST -confirm:$false
+ 
+# Remove selected host from Maintenance mode
+write-host "Removing host from Maintenance Mode"
+Get-VMHost -Name $SHOST | set-vmhost -State Connected
+ 
+# Display Popup when finished.
+[System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms")
+[System.Windows.Forms.MessageBox]::Show("The Patching for $($SHOST) is now complete..")
