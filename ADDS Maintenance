@@ -1,0 +1,102 @@
+$DaysInactive = 60 #Variable for amount of  < days you would like to see.
+$time = (Get-Date).Adddays(-($DaysInactive)) #Variable for the current date and time minus < days
+
+Import-Module ActiveDirectory #ADDS PowerShell modules that references modules to reference
+
+Get-ADComputer -Filter {lastlogontimestamp -lt $time}  -Properties Name, lastlogontimestamp| Select Name ,@{N='lastlogontimestamp'; E={[DateTime]::FromFileTime($_.lastlogontimestamp)}} | Export-Csv -Path .\inActive_Computers_60_Days.csv -NoTypeInformation
+
+
+send-mailmessage -From alias@domain.com -To alias@domain.com -Port 587 -SMTPServer EmailServer -Subject InActive_Computers_Report -Attachment .\inActive_Computers_60_Days.csv
+
+$DaysInactive = 60 #Variable for amount of  < days you would like to see.
+$time = (Get-Date).Adddays(-($DaysInactive)) #Variable for the current date and time minus < days
+
+Import-Module ActiveDirectory #ADDS PowerShell modules that references modules to reference
+
+Get-ADUser -Filter {LastLogonTimestamp -lt $time} -SearchBase "DC=ctdomain,DC=local"  -Properties Name, LastLogonTimestamp| Select Name ,@{N='LastLogonTimestamp'; E={[DateTime]::FromFileTime($_.lastlogontimestamp)}} | Export-Csv -Path .\inActive_Users_60_Days.csv -NoTypeInformation 
+
+
+send-mailmessage -From alias@domain.com -To alias@domain.com -Port 587 -SMTPServer EmailServer -Subject InActive_User_Report -Attachment .\inActive_Users_60_Days.csv
+
+#Lets take that information and build out a few more steps, we will disable these accounts and endpoints thereafter move them to a different OU. {Organizational Unit}
+
+$CurrentDate=Get-Date  
+$NumberDays=60  
+#Add your distinguishedNames' here if there are more than one separate with a ","
+$SearchBase='OU=AB,DC=domain,DC=local' 
+
+Import-Module ActiveDirectory 
+
+Get-ADComputer -Filter * -SearchBase $SearchBase -properties LastLogonDate, Description | where {$_.LastLogonDate.AddDays($NumberDays) -lt $CurrentDate } | Disable-ADAccount
+
+Get-ADComputer -Filter * -SearchBase $SearchBase -properties LastLogonDate, Description | where {$_.LastLogonDate.AddDays($NumberDays) -lt $CurrentDate } | Move-ADObject -TargetPath "OU=Disabled Computers,DC=domain,DC=local"
+
+#Add your distinguishedNames' here if there are more than one separate with a ","
+$SearchBase ='OU=AB,DC=domain,DC=local'
+
+$TimeSpan = New-Timespan -Days 180
+
+Import-Module ActiveDirectory
+
+Search-ADAccount -SearchBase $SearchBase -AccountInactive -Timespan $TimeSpan -UsersOnly | Disable-ADAccount
+
+Get-ADUser -Filter {Enabled -eq $false } -SearchBase $SearchBase | Move-ADObject -TargetPath "OU=Disabled Users,DC=domain,DC=local"
+
+#Just as a added plus to the unseen eye, remember those containers... that engineers almost always forget to clear out example the default "Computer container" when sysadmins do not create the objects first, and give those appropriate permissions to add them to the domain they surely end up in the default "Computer container", where no policies are being applied...yes... no GPO's apply to the default Computer container on Active Directory. here's how you automate these objects:
+
+#Staging OU Structure
+
+#Poll Default OU's
+#Move to staging OU
+#Security Policies + Agent Deployment
+
+#Load ActiveDirectory Module
+
+Import-Module ActiveDirectory
+
+#Createion of the staging OU automatically
+
+/*$parentOu = "OU=parent,Dc=domainName,DC=com"
+$creatOU = "Staging"
+$newOU = "OU=$creatOU,$parentOU"
+if (Get-ADDOrganizationalUnit -Filter "distinguishedName -eq '$newOU'") 
+
+{
+	Write-Host "$newOU already exists."
+}
+	else
+	{
+		New-ADOrganizationalUnit -Name $newOU -Path $parentOu
+	}
+
+*/
+
+#If you need to specify a different path other than your root level use this method " -Path "OU=Business,DC=domainName,DC=com"
+
+New-ADOrganizationalUnit "Staging"
+
+Start-Sleep -s 5
+
+Set-ADOrganizationalUnit -identity "OU=Staging,DC=domainName,DC=com" -ProtectedFromAccidentalDeletion $False
+
+Start-Sleep -s 4
+
+#Apply GPO's to newly created OU
+
+New-GPLink -Name "Agent Deployment" -Target "OU=Staging,DC=domainName,DC=com" -LinkEnabled Yes -Enforced No
+New-GPLink -Name "Security Filtering" -Target "OU=Staging,DC=domainName,DC=com" -LinkEnabled Yes -Enforced No
+
+Start-Sleep -s 3
+
+Get-ADComputer -Filter * -SearchBase "CN=Computers,DC=domainName,DC=com" | Move-ADObject -TargetPath "OU=Staging,DC=domainName,DC=com"
+
+Start-Sleep -s 2
+
+Set-ADOrganizationalUnit -identity "OU=Staging,DC=domainName,DC=com" -ProtectedFromAccidentalDeletion $true
+
+#All these scripts can be bundled together and automated from a RMM tool or a scheduler.
+
+#Create new user account on AD through Powershell
+
+New-ADUser -Name "Jack Robinson" -GivenName "Jack" -Surname "Robinson" -SamAccountName "J.Robinson" -UserPrincipalName "J.Robinson@domain.local" -Path "OU=Managers,DC=domain,DC=local" -AccountPassword(Read-Host -AsSecureString "Input Password") -Enabled $true
+
