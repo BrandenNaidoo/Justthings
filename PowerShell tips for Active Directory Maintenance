@@ -1,0 +1,142 @@
+Import-Module ActiveDirectory
+#Reset User's password
+Set-ADAccountPassword -Identity bnadmin -OldPassword (ConvertTo-SecureString -AsPlainText "******" -Force) -NewPassword (ConvertTo-SecureString -AsPlainText "****" -Force)
+
+#Object commands
+Clear-ADAccountExpiration
+Disable-ADAccount
+Enable-ADAccount
+Get-ADComputer
+Get-ADDefaultDomainPasswordPolicy
+Get-ADDomain
+Get-ADDomainController
+Get-ADUser
+Set-ADAccountExpiration
+Set-ADAccountPassword
+Set-ADComputer
+Set-ADUser
+Unlock-ADAccount
+
+#Active Directory Drive
+
+cd AD:
+dir
+AD:\> cd “dc=domain,dc=local”
+
+
+#Add-, Get-, Move-, Set-,
+
+-OtherAttributes @{‘shoeSize’=“8.5”}
+-OtherAttributes @{‘openProjects’=”ProjectX”,“ProjectY”}
+-OtherAttributes @{‘shoeSize’=“8.5”; ‘dateOfBirth’=“
+12/15/1981”;‘openProject’=“ProjectX”,“ProjectY”}
+
+Name City EmployeeID
+AccountExpirationDate Company EmployeeNumber
+AccountNotDelegated Country Enabled
+AccountPassword Department Fax
+AllowReversible PasswordEncryption Description GivenName
+CannotChangePassword DisplayName HomeDirectory
+Certificates Division HomeDrive
+ChangePasswordAtLogon EmailAddress HomePage
+HomePhone PasswordNever Expires SmartcardLogon Required
+Initials PasswordNot Required State
+Instance Path StreetAddress
+LogonWorkstations POBox Surname
+Manager PostalCode Title
+MobilePhone ProfilePath TrustedFor Delegation
+Office sAMAccountName Type
+OfficePhone ScriptPath UserPrincipalName
+Organization Server
+OtherName ServicePrincipal Names
+
+#Create a new user
+New-ADUser -SamAccountName “JWick” -GivenName “John”
+-Surname “Wick” -DisplayName “Andy Rose” -Path
+‘CN=Users,DC=domain,DC=local’ –AccountExpirationDate “9/20/2021” –EmployeeNumber “225373”
+-Enabled $false 
+
+#Set users password basic
+
+Set-ADPassword –Identity “CN=John Wick,OU=Users,DC=domain,DC=local”
+Please enter the current password for ‘CN=John Wick,OU=Users,DC=domain,DC=local’
+Password:**********
+Please enter the desired password for ‘CN=John Wick,OU=Users,DC=domain,DC=local’
+Password:***********
+Repeat Password:***********
+
+Set-ADAccountPassword -Identity userAccount -Reset -NewPassword (ConvertTo-SecureString -AsPlainText "*******************" -Force)
+
+#Unlock users
+Unlock-ADAccount –Identity "John Wick"
+
+#Search Acounts
+Search-ADAccount -AccountInactive -TimeSpan 30.00:00:00 | where
+{$_.ObjectClass -eq ‘user’}
+
+Search-ADAccount -AccountExpiring -TimeSpan 60.00:00:00
+
+#Enabled Accounts 
+Enable-ADAccount –Identity “dn=JWick,OU=Users,DC=36one,DC=co,DC=za”
+
+#Disabled Account
+Disable-ADAccount –Identity "JWick"
+
+#Search Lockedout users
+
+Search-ADAccount -LockedOut | where {$_.ObjectClass -eq ‘user’}
+
+#Set User account attributes
+Set-ADUser –Identity “cn=JWick,ou=Users,dc=domain,dc=local”
+–SmartCardLogonRequired $true
+
+AccountExpiration Date CannotChange Password City
+AccountNotDelegated Certificates Company
+AllowReversible PasswordEncryption ChangePassword AtLogon Country
+Department HomePhone ProfilePath
+Description Initials SamAccountName
+DisplayName LogonWorkstations ScriptPath
+Division Manager ServicePrincipal Names
+EmailAddress MobilePhone SmartcardLogon Required
+EmployeeID Office State
+EmployeeNumber OfficePhone StreetAddress
+Enabled Organization Surname
+Fax OtherName Title
+GivenName PasswordNever Expires TrustedFor Delegation
+HomeDirectory PasswordNot Required UserPrincipal Name
+HomeDrive POBox
+HomePage PostalCode
+
+#Get AD Objects
+Get-ADObject -Filter {cn -eq “Lincoln
+Alexander”} -Properties *
+
+#Move AD Objects
+Move-ADObject “cn=John Wick,OU=Management,DC=domain,DC=local”
+“ou=Managers,dc=DC=domain,DC=local”
+
+#Get AD Objects
+Get-ADObject “CN=Person Surname,OU=Organisation - Remote Managed Services,DC=domain,DC=local”
+-Properties whenCreated
+
+#Add users to groups
+Add-ADgroupMember -Identity "GroupName" -Member "UserName"
+
+#Example
+PS C:\Windows\system32> Remove-ADGroupMember                                    
+                                                                                
+cmdlet Remove-ADGroupMember at command pipeline position 1                      
+Supply values for the following parameters:                                     
+Identity: FTRMS_Tier4_Access                                                    
+Members[0]: asadmin                                                             
+Members[1]:      
+
+#Get AD Group memebers in selected security groups
+Get-ADGroup 
+
+#logoff user remotely
+quser
+Logoff sessionID
+
+#Rename a computer account
+Rename-computer –computername “computer” –newname “newcomputername” –domaincredential domain\user –force –restart
