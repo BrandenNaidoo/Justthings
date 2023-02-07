@@ -132,10 +132,11 @@ Set-MailboxFolderPermission -Identity $cal -User Default -AccessRights LimitedDe
        $Perms | select identity, Foldername, AccessRights | export-csv $file -append
     }
     
-Services accounts with specified accounts in use.
+#Services accounts with specified accounts in use.
 
 Get-Content Server.txt | ForEach-Object { Get-WmiObject win32_service | ft name, startname, startmode $_ } | Out-File -FilePath .\Services_with_Administrator_Account_Attached.txt
 
+#Manual Administrator lookup
 
 Get-WmiObject win32_service | ft name, startname, startmode >c:\temp\servers_with_administrator_account.txt
 
